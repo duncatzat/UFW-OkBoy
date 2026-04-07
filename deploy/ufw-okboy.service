@@ -28,9 +28,11 @@ Restart=on-failure
 RestartSec=5
 
 # Security hardening
+# Note: UFW needs write access to /run (lock file), /etc/ufw and /lib/ufw
+# (rule persistence), so ProtectSystem cannot be "strict".
 NoNewPrivileges=no
-ProtectSystem=strict
-ReadWritePaths=/var/lib/ufw-okboy /var/log/ufw-okboy
+ProtectSystem=full
+ReadWritePaths=/var/lib/ufw-okboy /var/log/ufw-okboy /run /etc/ufw /lib/ufw
 ProtectHome=yes
 PrivateTmp=yes
 
