@@ -119,6 +119,10 @@ def create_app(config_path: str = "config.yaml") -> Flask:
     ports = cfg["protected_ports"]
     proto = cfg.get("proto", "tcp")
 
+    # Anomaly detection thresholds (configurable)
+    anomaly_window = cfg.get("anomaly_window", 3600)      # 1 hour
+    anomaly_max_changes = cfg.get("anomaly_max_changes", 5)  # max IP changes per window
+
     def _auth():
         return verify_auth(request.headers.get("Authorization"), users, ttl)
 
@@ -172,12 +176,28 @@ def create_app(config_path: str = "config.yaml") -> Flask:
         ufw.update_state(username, client_ip)
         logger.info("Knock: %s@%s (was %s)", username, client_ip, old_ip or "new")
 
+        # Check for anomalous IP change patterns (possible credential sharing)
+        warning = None
+        anomaly = ufw.check_ip_anomaly(username, anomaly_window, anomaly_max_changes)
+        if anomaly:
+            warning = (
+                f"Suspicious activity: {anomaly['changes']} IP changes from "
+                f"{anomaly['unique_ips']} unique IPs in the last "
+                f"{anomaly_window // 60} minutes. Possible credential sharing."
+            )
+            logger.warning(
+                "ANOMALY for %s: %d IP changes, %d unique IPs: %s",
+                username, anomaly["changes"], anomaly["unique_ips"],
+                ", ".join(anomaly["ips"]),
+            )
+
         return jsonify({
             "ok": True,
             "ip": client_ip,
             "changed": True,
             "old_ip": old_ip,
             "message": "Firewall rules updated",
+            **({"warning": warning} if warning else {}),
         })
 
     @app.route("/api/status", methods=["GET"])

@@ -481,6 +481,12 @@ async function doKnock() {
       } else {
         addLog(`Heartbeat OK - ${currentIP}`, "ok");
       }
+
+      // Show anomaly warning if credential sharing is suspected
+      if (result.warning) {
+        setStatus("warn", "Warning: Anomaly Detected");
+        addLog(result.warning, "warn");
+      }
     } else {
       // Auth error → disconnect
       if (result.error && (

@@ -95,14 +95,34 @@ class UFWManager:
         return self.state.get(username, {}).get("ip")
 
     def get_user_state(self, username: str) -> dict:
-        """Return full state dict for a user."""
-        return self.state.get(username, {"ip": None, "last_knock": None})
+        """Return full state dict for a user (safe copy without ip_history)."""
+        data = self.state.get(username, {"ip": None, "last_knock": None})
+        # Return a clean view for the API (omit internal tracking fields)
+        return {
+            "ip": data.get("ip"),
+            "last_knock": data.get("last_knock"),
+            "ip_changes_recent": len(data.get("ip_history", [])),
+        }
 
     def update_state(self, username: str, ip: str) -> None:
-        """Record a new IP and knock timestamp for a user."""
+        """Record a new IP and knock timestamp, maintaining IP change history."""
+        now = int(time.time())
+        existing = self.state.get(username, {})
+        old_ip = existing.get("ip")
+
+        # Maintain a rolling window of recent IP changes for anomaly detection.
+        # Each entry: {"ip": ..., "ts": ...}
+        ip_history = existing.get("ip_history", [])
+        if old_ip and old_ip != ip:
+            ip_history.append({"ip": old_ip, "ts": now})
+        # Keep only last 24 hours of history
+        cutoff = now - 86400
+        ip_history = [e for e in ip_history if e["ts"] > cutoff]
+
         self.state[username] = {
             "ip": ip,
-            "last_knock": int(time.time()),
+            "last_knock": now,
+            "ip_history": ip_history,
         }
         self._save_state()
 
@@ -111,8 +131,43 @@ class UFWManager:
         if username in self.state:
             self.state[username]["last_knock"] = int(time.time())
         else:
-            self.state[username] = {"ip": ip, "last_knock": int(time.time())}
+            self.state[username] = {
+                "ip": ip,
+                "last_knock": int(time.time()),
+                "ip_history": [],
+            }
         self._save_state()
+
+    def check_ip_anomaly(self, username: str, window_seconds: int = 3600,
+                         max_changes: int = 5) -> dict | None:
+        """Detect suspicious IP change patterns that suggest credential sharing.
+
+        Checks if IP has changed more than *max_changes* times within the
+        rolling *window_seconds*. Normal users rarely change IP more than
+        once or twice per day.
+
+        Returns:
+            None if normal, or dict with anomaly details if suspicious.
+        """
+        data = self.state.get(username, {})
+        ip_history = data.get("ip_history", [])
+        if not ip_history:
+            return None
+
+        now = int(time.time())
+        cutoff = now - window_seconds
+        recent_changes = [e for e in ip_history if e["ts"] > cutoff]
+
+        if len(recent_changes) >= max_changes:
+            unique_ips = {e["ip"] for e in recent_changes}
+            unique_ips.add(data.get("ip", ""))
+            return {
+                "changes": len(recent_changes),
+                "window": window_seconds,
+                "unique_ips": len(unique_ips),
+                "ips": list(unique_ips),
+            }
+        return None
 
     # ------------------------------------------------------------------ #
     #  Maintenance

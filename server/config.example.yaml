@@ -29,6 +29,20 @@ signature_ttl: 300
 #   ALLOW  1.2.3.4  # ufw-okboy:alice
 rule_prefix: "ufw-okboy"
 
+# ---------- Anomaly Detection ---------- #
+
+# Detect possible credential sharing by monitoring IP change frequency.
+# If a user's IP changes more than `anomaly_max_changes` times within
+# `anomaly_window` seconds, a warning is logged and returned to the client.
+# Normal users rarely change IP more than once or twice per day.
+
+# Time window for counting IP changes (seconds). Default: 3600 (1 hour)
+anomaly_window: 3600
+
+# Max IP changes allowed within the window before triggering a warning.
+# Default: 5
+anomaly_max_changes: 5
+
 # ---------- Storage ---------- #
 
 # Path to the JSON state file (tracks user IPs and knock timestamps).
