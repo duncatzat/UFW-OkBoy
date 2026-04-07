@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+dist/
+build/
 venv/
 .venv/
 
@@ -12,16 +14,22 @@ client/config
 
 # State data
 state.json
+*.tmp
+
+# Scaffolding / CI tooling templates
+.spec-workflow/
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Logs
 *.log
