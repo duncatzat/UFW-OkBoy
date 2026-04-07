@@ -54,14 +54,22 @@ class UFWManager:
 
     @staticmethod
     def _run_ufw(*args: str) -> str:
-        """Execute a UFW command with --force flag, return stdout."""
-        cmd = ["ufw", "--force", *args]
+        """Execute a UFW command, return stdout.
+
+        Note: ``--force`` is NOT added globally — callers must include it
+        explicitly when needed (e.g. ``delete``).  Some UFW versions reject
+        ``--force`` before ``allow``/``deny``, causing *Invalid syntax*.
+        """
+        cmd = ["ufw", *args]
         logger.info("Exec: %s", " ".join(cmd))
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=30, check=False,
         )
         if result.returncode != 0:
-            logger.error("UFW failed (rc=%d): %s", result.returncode, result.stderr.strip())
+            logger.error(
+                "UFW failed (rc=%d): cmd=%s | stderr=%s",
+                result.returncode, " ".join(cmd), result.stderr.strip(),
+            )
             raise RuntimeError(f"UFW command failed: {result.stderr.strip()}")
         return result.stdout
 
@@ -76,10 +84,14 @@ class UFWManager:
         logger.info("Added rule: %s -> port %s/%s (%s)", ip, port, proto, username)
 
     def remove_rule(self, ip: str, port: int, username: str, proto: str = "tcp") -> None:
-        """Remove a specific UFW rule. Logs warning if rule doesn't exist."""
+        """Remove a specific UFW rule. Logs warning if rule doesn't exist.
+
+        Uses ``--force`` to suppress the interactive confirmation prompt
+        that ``ufw delete`` would otherwise display.
+        """
         try:
             self._run_ufw(
-                "delete", "allow", "from", ip,
+                "--force", "delete", "allow", "from", ip,
                 "to", "any", "port", str(port), "proto", proto,
             )
             logger.info("Removed rule: %s -> port %s/%s (%s)", ip, port, proto, username)
