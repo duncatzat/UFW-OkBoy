@@ -1,25 +1,29 @@
 # UFW OkBoy
 
-Dynamic firewall allowlist manager — automatically registers authorized clients' IP addresses in UFW when they authenticate, and cleans up stale entries to keep the firewall tidy.
+**Dynamic firewall allowlist manager** — automatically registers authorized clients' IP addresses in UFW when they authenticate, swaps rules seamlessly on IP change, and keeps the firewall clean and traceable.
 
-[English](README.en.md) | [中文](README.md)
+English | [中文](README.md)
+
+<p align="center">
+  <img src="docs/web-client.png" alt="Web client interface" width="380">
+</p>
 
 ---
 
-## Problem
+## Why
 
-Your server's sensitive ports (admin panels, databases, APIs) are protected by UFW firewall rules that only allow access from specific IPs. But client IPs change — switching networks, traveling, restarting routers. Every change means contacting the admin to manually update the firewall.
+Your server's sensitive ports (admin panels, databases, APIs) are behind UFW firewall rules that only allow specific IPs. But client IPs change — switching WiFi, traveling, restarting routers — and every change means bothering the admin to update the firewall manually.
 
-## Solution
+**UFW OkBoy automates this**: users authenticate through a web page once, and the server updates the firewall automatically. When their IP changes, the next heartbeat swaps the rule seamlessly.
 
-UFW OkBoy automates this. Clients authenticate through an HTTPS endpoint, and the server automatically updates UFW rules to allow their current IP. When their IP changes, the old rule is swapped out on the next heartbeat. Each rule is tagged with the username for full traceability.
+## How It Works
 
 ```
 Client (Browser / Python / Shell)
     |
-    | HTTPS + HMAC-SHA256 auth
+    | HTTPS + HMAC-SHA256 signed auth
     v
-Nginx (reverse proxy, TLS, passes X-Real-IP)
+Nginx (reverse proxy, TLS, passes real IP)
     |
     v
 Flask API (verify identity, extract client IP)
@@ -30,13 +34,15 @@ UFW (remove old rule → add new rule → comment: ufw-okboy:<username>)
 
 ## Key Features
 
-- **Web client** — open a page, login once, auto-knocks every 30s. Credentials saved for auto-reconnect on reopen. Works on mobile.
-- **One IP per user per port** — old IP removed before new IP added, firewall stays clean
-- **Traceable rules** — every UFW rule tagged `ufw-okboy:<username>`, visible in `ufw status`
-- **Anti-sharing** — sharing credentials = mutual kicking (only one IP active per account). Anomaly detection alerts on suspicious IP switching patterns.
-- **Auto-cleanup** — stale rules (users who haven't knocked in 7+ days) purged by daily timer
-- **Simple auth** — HMAC-SHA256 with timestamp. Secret never transmitted. HTTPS encrypted.
-- **Three client options** — Web UI (browser only), Python script, Shell script (curl + openssl)
+| Feature | Description |
+|---------|-------------|
+| **Web client** | Open in browser, auto-knocks every 30s, auto-reconnects on reopen. Mobile friendly |
+| **Clean rules** | One rule per user per port, old IP auto-replaced on change, no stale entries |
+| **Traceable rules** | Each UFW rule tagged `ufw-okboy:<username>`, visible in `ufw status` |
+| **Anti-sharing** | One IP per account — sharing credentials means mutual kicking; anomaly alerts on suspicious IP switching |
+| **Auto-cleanup** | Rules for users inactive 7+ days purged by daily timer |
+| **Secure auth** | HMAC-SHA256 + timestamp, secret never transmitted, HTTPS encrypted |
+| **Three clients** | Web UI / Python script / Shell script (curl + openssl, zero deps) |
 
 ## Quick Start
 
@@ -47,18 +53,18 @@ git clone https://github.com/lvusyy/UFW-OkBoy.git /opt/ufw-okboy
 cd /opt/ufw-okboy
 python3 -m venv venv && venv/bin/pip install -r server/requirements.txt
 cd server
-../venv/bin/python app.py gen-secret alice        # generate user secret
-cp config.example.yaml config.yaml                # edit: set ports and secrets
-sudo ../venv/bin/python app.py serve --debug       # start (dev mode)
+../venv/bin/python app.py gen-secret alice    # generate user secret
+cp config.example.yaml config.yaml            # edit: set ports and secrets
+sudo ../venv/bin/python app.py serve --debug   # start (dev mode)
 ```
 
 **Client (user):**
 
-Open `https://your-server.com/` in a browser → enter username and secret → Connect.
+Open `https://your-server.com/` in a browser → enter username and secret → click **Connect** → done.
 
 ## Documentation
 
-See **[GUIDE.md](GUIDE.md)** for the complete guide (Chinese), including:
+See **[GUIDE.md](GUIDE.md)** for the complete deployment and usage guide (Chinese), covering:
 
 - Server deployment (UFW prerequisites, Nginx, Systemd)
 - Key generation and secure distribution workflow
@@ -71,22 +77,22 @@ See **[GUIDE.md](GUIDE.md)** for the complete guide (Chinese), including:
 
 ```
 server/
-  app.py              Flask API + CLI management (serve/gen-secret/list/cleanup/sync)
-  ufw_ops.py          UFW operations + state management
-  static/index.html   Web client (single-file SPA)
+  app.py              Flask API + CLI (serve / gen-secret / list / cleanup / sync)
+  ufw_ops.py          UFW operations + state persistence
+  static/index.html   Web client (single-file SPA, no build step)
   config.example.yaml Configuration template
-  requirements.txt    Python dependencies
+  requirements.txt    Dependencies
 client/
-  knock.py            Python client (stdlib only, zero external deps)
+  knock.py            Python client (stdlib only)
   knock.sh            Shell client (curl + openssl)
   config.example.yaml Client config template
 nginx/
-  ufw-okboy.conf      Nginx reverse proxy configuration
+  ufw-okboy.conf      Nginx reverse proxy config
 deploy/
   ufw-okboy.service   Systemd service (Gunicorn)
-  ufw-okboy-cleanup.* Daily stale rule cleanup timer
+  ufw-okboy-cleanup.* Stale rule cleanup timer
   knock.*             Client auto-knock timer
-  install-server.sh   Server installation script
+  install-server.sh   Server install script
 ```
 
 ## License

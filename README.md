@@ -4,25 +4,29 @@
 
 [English](README.en.md) | 中文
 
+<p align="center">
+  <img src="docs/web-client.png" alt="Web 客户端界面" width="380">
+</p>
+
 ---
 
-## 背景问题
+## 为什么需要它
 
-服务器上的敏感端口（管理后台、数据库、API）通过 UFW 防火墙白名单限制访问 IP。但客户端 IP 会变化——切换网络、出差换地方、重启路由器，每次都要联系管理员手动更新防火墙，效率极低。
+服务器上的敏感端口（管理后台、数据库、API）通过 UFW 防火墙白名单限制访问。但客户端 IP 会变——切换 WiFi、出差、重启路由器——每次都要找管理员手动改规则。
 
-## 解决方案
+**UFW OkBoy 让这件事自动化**：用户打开网页认证一次，服务器自动更新防火墙；IP 变了，下一个心跳周期无感切换。
 
-UFW OkBoy 将这个流程自动化。客户端通过 HTTPS 端点认证，服务器自动识别当前 IP 并更新 UFW 规则。IP 变化时，旧规则在下一次心跳时自动替换。每条规则标注用户名，`ufw status` 一目了然。
+## 工作流程
 
 ```
 客户端（浏览器 / Python / Shell）
     |
-    | HTTPS + HMAC-SHA256 认证
+    | HTTPS + HMAC-SHA256 签名认证
     v
-Nginx（反向代理，TLS，传递 X-Real-IP）
+Nginx（反向代理，TLS 加密，传递真实 IP）
     |
     v
-Flask API（验证身份，获取客户端真实 IP）
+Flask API（验证身份，提取客户端 IP）
     |
     v
 UFW（移除旧规则 → 添加新规则 → 注释：ufw-okboy:<用户名>）
@@ -30,13 +34,15 @@ UFW（移除旧规则 → 添加新规则 → 注释：ufw-okboy:<用户名>）
 
 ## 核心特性
 
-- **网页客户端** — 打开页面登录一次，每 30 秒自动续期。凭证保存在浏览器中，重开页面自动恢复连接。手机同样适用。
-- **一人一个 IP 槽** — 添加新 IP 前自动移除旧规则，防火墙始终保持整洁
-- **规则可追溯** — 每条 UFW 规则带注释 `ufw-okboy:<用户名>`，`ufw status` 直接看出归属
-- **防凭证共享** — 共享凭证 = 互相踢（同一账号只有一个 IP 有效）；异常 IP 切换频率自动告警
-- **自动清理** — 超过 7 天未活跃的用户规则由每日定时任务自动清除
-- **认证简洁安全** — HMAC-SHA256 + 时间戳，密钥不在网络传输，全程 HTTPS 加密
-- **三种客户端** — Web UI（仅需浏览器）、Python 脚本、Shell 脚本（仅需 curl + openssl）
+| 特性 | 说明 |
+|------|------|
+| **网页客户端** | 浏览器打开即用，每 30 秒自动续期，关闭后重开自动恢复。手机适用 |
+| **规则整洁** | 每用户每端口仅一条规则，IP 变更时自动替换，不留残余 |
+| **规则可追溯** | UFW 规则带注释 `ufw-okboy:<用户名>`，`ufw status` 直观可查 |
+| **防凭证共享** | 同一账号只能绑定一个 IP，共享即互踢；异常 IP 切换自动告警 |
+| **自动过期清理** | 7 天未活跃的规则由每日定时任务自动清除 |
+| **认证安全** | HMAC-SHA256 + 时间戳，密钥不上线，全程 HTTPS |
+| **三种客户端** | Web UI / Python 脚本 / Shell 脚本（curl + openssl，零依赖） |
 
 ## 快速开始
 
@@ -47,18 +53,18 @@ git clone https://github.com/lvusyy/UFW-OkBoy.git /opt/ufw-okboy
 cd /opt/ufw-okboy
 python3 -m venv venv && venv/bin/pip install -r server/requirements.txt
 cd server
-../venv/bin/python app.py gen-secret alice        # 生成用户密钥
-cp config.example.yaml config.yaml                # 编辑：填入端口和密钥
-sudo ../venv/bin/python app.py serve --debug       # 启动（开发模式）
+../venv/bin/python app.py gen-secret alice    # 生成用户密钥
+cp config.example.yaml config.yaml            # 编辑：填入端口和密钥
+sudo ../venv/bin/python app.py serve --debug   # 启动（开发模式）
 ```
 
 **客户端（用户）：**
 
-用浏览器打开 `https://your-server.com/` → 输入用户名和密钥 → 点击 Connect。
+浏览器打开 `https://your-server.com/` → 输入用户名和密钥 → 点击 **Connect** → 完成。
 
 ## 完整文档
 
-详见 **[GUIDE.md](GUIDE.md)**，包含：
+详见 **[GUIDE.md](GUIDE.md)**（中文），包含：
 
 - 服务端部署（UFW 前置配置、Nginx、Systemd）
 - 密钥生成与安全分发流程（含发给用户的模板消息）
@@ -71,22 +77,22 @@ sudo ../venv/bin/python app.py serve --debug       # 启动（开发模式）
 
 ```
 server/
-  app.py              Flask API + CLI 管理（serve/gen-secret/list/cleanup/sync）
-  ufw_ops.py          UFW 操作 + 状态管理
+  app.py              Flask API + CLI（serve / gen-secret / list / cleanup / sync）
+  ufw_ops.py          UFW 操作 + 状态持久化
   static/index.html   Web 客户端（单文件 SPA，无需构建）
-  config.example.yaml 服务端配置模板
-  requirements.txt    Python 依赖
+  config.example.yaml 配置模板
+  requirements.txt    依赖清单
 client/
-  knock.py            Python 客户端（仅标准库，零外部依赖）
-  knock.sh            Shell 客户端（仅需 curl + openssl）
+  knock.py            Python 客户端（仅标准库）
+  knock.sh            Shell 客户端（curl + openssl）
   config.example.yaml 客户端配置模板
 nginx/
   ufw-okboy.conf      Nginx 反向代理配置
 deploy/
   ufw-okboy.service   Systemd 服务（Gunicorn）
-  ufw-okboy-cleanup.* 每日过期规则清理定时器
+  ufw-okboy-cleanup.* 过期规则清理定时器
   knock.*             客户端自动续期定时器
-  install-server.sh   服务端一键安装脚本
+  install-server.sh   一键安装脚本
 ```
 
 ## 许可证
