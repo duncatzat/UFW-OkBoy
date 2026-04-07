@@ -1,0 +1,45 @@
+# UFW OkBoy - Server Configuration
+# Copy this file to config.yaml and modify as needed.
+
+# ---------- Network ---------- #
+
+# Ports protected by the firewall allowlist.
+# Authenticated clients will be granted access to ALL listed ports.
+protected_ports:
+  - 8080
+  # - 3306
+  # - 6379
+
+# Protocol for firewall rules (tcp / udp)
+proto: "tcp"
+
+# Flask listen address (should be localhost when behind Nginx)
+listen_host: "127.0.0.1"
+listen_port: 5000
+
+# ---------- Security ---------- #
+
+# HMAC signature validity window in seconds.
+# Client timestamps outside this window will be rejected.
+# Increase if clients have significant clock drift.
+signature_ttl: 300
+
+# Prefix for UFW rule comments. Used to identify rules managed by this tool.
+# When you run `ufw status`, managed rules will show as:
+#   ALLOW  1.2.3.4  # ufw-okboy:alice
+rule_prefix: "ufw-okboy"
+
+# ---------- Storage ---------- #
+
+# Path to the JSON state file (tracks user IPs and knock timestamps).
+state_file: "/var/lib/ufw-okboy/state.json"
+
+# ---------- Users ---------- #
+# Each user needs a unique secret for HMAC authentication.
+# Generate secrets with: python app.py gen-secret <username>
+
+users:
+  alice:
+    secret: "CHANGE_ME_run_python_app_py_gen_secret_alice"
+  # bob:
+  #   secret: "CHANGE_ME_run_python_app_py_gen_secret_bob"

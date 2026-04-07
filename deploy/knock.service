@@ -1,0 +1,16 @@
+# UFW OkBoy - Client Knock Service (oneshot, triggered by knock.timer)
+#
+# Install on client machine:
+#   cp knock.service knock.timer /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now knock.timer
+
+[Unit]
+Description=UFW OkBoy - Client IP registration knock
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/ufw-okboy-knock.sh
+# Or if using the Python client:
+# ExecStart=/usr/bin/python3 /opt/ufw-okboy-client/knock.py -c /etc/ufw-okboy/client.yaml

@@ -1,0 +1,13 @@
+# UFW OkBoy - Client periodic knock timer
+# Sends a knock every 5 minutes to keep the firewall allowlist up to date.
+
+[Unit]
+Description=Periodic UFW OkBoy client knock
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=5min
+AccuracySec=30
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,38 @@
+# UFW OkBoy - Server Systemd Service
+#
+# Install:
+#   cp ufw-okboy.service /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now ufw-okboy
+
+[Unit]
+Description=UFW OkBoy - Dynamic Firewall Allowlist Manager
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=root
+Group=root
+
+WorkingDirectory=/opt/ufw-okboy/server
+ExecStart=/opt/ufw-okboy/venv/bin/gunicorn \
+    --bind 127.0.0.1:5000 \
+    --workers 2 \
+    --timeout 30 \
+    --access-logfile /var/log/ufw-okboy/access.log \
+    --error-logfile /var/log/ufw-okboy/error.log \
+    "app:create_app()"
+
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=no
+ProtectSystem=strict
+ReadWritePaths=/var/lib/ufw-okboy /var/log/ufw-okboy
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
