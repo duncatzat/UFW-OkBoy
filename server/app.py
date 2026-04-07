@@ -18,8 +18,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import os
+
 import yaml
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 
 from ufw_ops import UFWManager
 
@@ -103,7 +105,8 @@ def verify_auth(auth_header: str | None, users: dict, ttl: int = 300) -> tuple[s
 
 def create_app(config_path: str = "config.yaml") -> Flask:
     """Create and configure the Flask application."""
-    app = Flask(__name__)
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    app = Flask(__name__, static_folder=static_dir, static_url_path="/static")
     cfg = load_config(config_path)
 
     ufw = UFWManager(
@@ -191,6 +194,13 @@ def create_app(config_path: str = "config.yaml") -> Flask:
     def health():
         """Health check endpoint (no auth required)."""
         return jsonify({"ok": True, "service": "ufw-okboy"})
+
+    # ---- Web Client ---- #
+
+    @app.route("/")
+    def client_page():
+        """Serve the web-based client UI."""
+        return send_from_directory(static_dir, "index.html")
 
     return app
 

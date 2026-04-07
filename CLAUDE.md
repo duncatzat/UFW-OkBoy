@@ -9,7 +9,7 @@ and manual allowlist management is impractical.
 ## Architecture
 
 ```
-Client (knock.py / knock.sh)
+Client (Web UI / knock.py / knock.sh)
     |
     | HTTPS (port 443)
     v
@@ -17,7 +17,7 @@ Nginx (reverse proxy, TLS termination, passes X-Real-IP)
     |
     | HTTP (127.0.0.1:5000)
     v
-Flask API (app.py)
+Flask API (app.py) + Web Client (static/index.html)
     |
     | subprocess
     v
@@ -26,6 +26,14 @@ UFW Firewall (ufw_ops.py)
     v
 State Store (/var/lib/ufw-okboy/state.json)
 ```
+
+### Client Options
+
+1. **Web UI (recommended)**: Open `https://your-server/` in a browser. Login once,
+   page auto-knocks every 30 seconds. Credentials saved to localStorage for
+   automatic reconnection on page reopen. Works on mobile.
+2. **Python client**: `knock.py` with `--watch 30` for headless servers.
+3. **Shell client**: `knock.sh` (curl + openssl only, zero dependencies).
 
 ## Authentication Protocol
 
@@ -54,6 +62,7 @@ signature = HMAC-SHA256(secret, "<username>:<timestamp>")
 server/
   app.py              - Flask API + CLI management commands
   ufw_ops.py          - UFW firewall operations + state management
+  static/index.html   - Web client UI (single-file SPA, no build step)
   config.example.yaml - Server configuration template
   requirements.txt    - Python dependencies (Flask, PyYAML, Gunicorn)
 client/

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>UFW OkBoy</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text2: #64748b;
+  --blue: #2563eb;
+  --blue-hover: #1d4ed8;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --amber: #d97706;
+  --amber-bg: #fffbeb;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --gray: #94a3b8;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.container {
+  width: 100%;
+  max-width: 420px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+header p {
+  color: var(--text2);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+}
+
+/* ---- Login Form ---- */
+
+.field { margin-bottom: 1rem; }
+
+.field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 0.375rem;
+}
+
+.field input[type="text"],
+.field input[type="password"] {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--blue);
+}
+
+.checkbox label {
+  margin-bottom: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  width: 100%;
+  background: var(--blue);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) { background: var(--blue-hover); }
+
+.btn-secondary {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: #e2e8f0; }
+
+.btn-danger {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid #fecaca;
+}
+.btn-danger:hover { background: #fee2e2; }
+
+.btn-small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.login-error {
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  display: none;
+}
+
+/* ---- Dashboard ---- */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.status-bar .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-bar.ok     { background: var(--green-bg); color: var(--green); }
+.status-bar.ok .dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+.status-bar.warn     { background: var(--amber-bg); color: var(--amber); }
+.status-bar.warn .dot { background: var(--amber); }
+
+.status-bar.err     { background: var(--red-bg); color: var(--red); }
+.status-bar.err .dot { background: var(--red); }
+
+.status-bar.off     { background: var(--bg); color: var(--gray); }
+.status-bar.off .dot { background: var(--gray); }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.info-item .label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-item .value {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.info-item.span2 { grid-column: span 2; }
+
+/* Progress bar */
+.progress-wrap {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 2px;
+  transition: width 1s linear;
+  width: 100%;
+}
+
+/* Activity log */
+.log-section { margin-bottom: 1rem; }
+
+.log-section h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.log {
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 0.8125rem;
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+  line-height: 1.7;
+  color: var(--text2);
+  scrollbar-width: thin;
+}
+
+.log-entry { padding: 0.125rem 0; }
+.log-entry.ok   { color: var(--green); }
+.log-entry.warn { color: var(--amber); }
+.log-entry.err  { color: var(--red); }
+
+/* Action buttons */
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actions button { flex: 1; }
+
+[hidden] { display: none !important; }
+
+/* Mobile refinements */
+@media (max-width: 480px) {
+  body { padding: 1rem 0.75rem; }
+  .card { padding: 1.25rem; }
+  header h1 { font-size: 1.25rem; }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --green-bg: #052e16;
+    --amber-bg: #451a03;
+    --red-bg: #450a0a;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .field input[type="text"],
+  .field input[type="password"] {
+    background: #0f172a;
+    color: var(--text);
+  }
+  .btn-secondary { background: #0f172a; }
+  .btn-secondary:hover { background: #334155; }
+  .btn-danger { border-color: #7f1d1d; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>UFW OkBoy</h1>
+    <p>Dynamic Firewall Allowlist</p>
+  </header>
+
+  <!-- Login View -->
+  <div id="login-view" class="card">
+    <div id="login-error" class="login-error"></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="f-user">Username</label>
+        <input type="text" id="f-user" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="f-secret">Secret</label>
+        <input type="password" id="f-secret" autocomplete="current-password" required>
+      </div>
+      <div class="field checkbox">
+        <input type="checkbox" id="f-remember" checked>
+        <label for="f-remember">Remember credentials</label>
+      </div>
+      <button type="submit" class="btn-primary" id="btn-connect">Connect</button>
+    </form>
+  </div>
+
+  <!-- Dashboard View -->
+  <div id="dash-view" class="card" hidden>
+    <div id="status-bar" class="status-bar off">
+      <span class="dot"></span>
+      <span id="status-text">Connecting...</span>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="label">User</div>
+        <div class="value" id="info-user">-</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Next Knock</div>
+        <div class="value" id="info-countdown">-</div>
+      </div>
+      <div class="info-item span2">
+        <div class="label">Registered IP</div>
+        <div class="value" id="info-ip">-</div>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-fill" id="progress"></div>
+    </div>
+
+    <div class="log-section">
+      <h3>Activity</h3>
+      <div id="log" class="log"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-secondary btn-small" id="btn-knock">Knock Now</button>
+      <button class="btn-danger btn-small" id="btn-disconnect">Disconnect</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+// ================================================================ //
+//  Constants
+// ================================================================ //
+
+const KNOCK_INTERVAL = 30;          // seconds
+const STORAGE_KEY    = "ufw-okboy"; // localStorage key
+const MAX_LOG        = 50;          // max log entries kept
+const API_BASE       = "";          // same origin (empty = relative)
+
+// ================================================================ //
+//  DOM references
+// ================================================================ //
+
+const $ = (s) => document.querySelector(s);
+const loginView    = $("#login-view");
+const dashView     = $("#dash-view");
+const loginForm    = $("#login-form");
+const loginError   = $("#login-error");
+const fUser        = $("#f-user");
+const fSecret      = $("#f-secret");
+const fRemember    = $("#f-remember");
+const btnConnect   = $("#btn-connect");
+const btnKnock     = $("#btn-knock");
+const btnDisconnect = $("#btn-disconnect");
+const statusBar    = $("#status-bar");
+const statusText   = $("#status-text");
+const infoUser     = $("#info-user");
+const infoIP       = $("#info-ip");
+const infoCountdown = $("#info-countdown");
+const progressFill = $("#progress");
+const logEl        = $("#log");
+
+// ================================================================ //
+//  State
+// ================================================================ //
+
+let credentials = null;  // { username, secret }
+let knockTimer  = null;  // setInterval ID for knocking
+let tickTimer   = null;  // setInterval ID for countdown tick
+let countdown   = 0;
+let lastKnockTs = 0;     // timestamp of last knock attempt
+let currentIP   = null;
+let isKnocking  = false;
+
+// ================================================================ //
+//  Crypto: HMAC-SHA256 via Web Crypto API
+// ================================================================ //
+
+async function hmacSHA256(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
+  return Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function buildAuth(username, secret) {
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const sig = await hmacSHA256(secret, `${username}:${ts}`);
+  return `HMAC-SHA256 ${username}:${ts}:${sig}`;
+}
+
+// ================================================================ //
+//  API calls
+// ================================================================ //
+
+async function apiKnock(username, secret) {
+  const auth = await buildAuth(username, secret);
+  const resp = await fetch(`${API_BASE}/api/knock`, {
+    method: "POST",
+    headers: { "Authorization": auth },
+  });
+  return resp.json();
+}
+
+// ================================================================ //
+//  Knock logic
+// ================================================================ //
+
+async function doKnock() {
+  if (!credentials || isKnocking) return;
+  isKnocking = true;
+
+  try {
+    const result = await apiKnock(credentials.username, credentials.secret);
+    lastKnockTs = Date.now();
+
+    if (result.ok) {
+      currentIP = result.ip || currentIP;
+      setStatus("ok", "Connected");
+      infoIP.textContent = currentIP || "-";
+
+      if (result.changed) {
+        const old = result.old_ip ? ` (was ${result.old_ip})` : "";
+        addLog(`IP updated: ${currentIP}${old}`, "ok");
+      } else {
+        addLog(`Heartbeat OK - ${currentIP}`, "ok");
+      }
+    } else {
+      // Auth error → disconnect
+      if (result.error && (
+        result.error.includes("Unknown user") ||
+        result.error.includes("Invalid signature") ||
+        result.error.includes("expired")
+      )) {
+        addLog(`Auth failed: ${result.error}`, "err");
+        disconnect(result.error);
+        return;
+      }
+      setStatus("warn", "Warning");
+      addLog(`Server: ${result.error || "unknown error"}`, "warn");
+    }
+  } catch (err) {
+    setStatus("err", "Network Error");
+    addLog(`Error: ${err.message}`, "err");
+  } finally {
+    isKnocking = false;
+    resetCountdown();
+  }
+}
+
+// ================================================================ //
+//  Timer management
+// ================================================================ //
+
+function resetCountdown() {
+  countdown = KNOCK_INTERVAL;
+  updateCountdownDisplay();
+}
+
+function startTimers() {
+  resetCountdown();
+  // Knock timer
+  knockTimer = setInterval(() => doKnock(), KNOCK_INTERVAL * 1000);
+  // UI tick every second
+  tickTimer = setInterval(() => {
+    countdown = Math.max(0, countdown - 1);
+    updateCountdownDisplay();
+  }, 1000);
+}
+
+function stopTimers() {
+  clearInterval(knockTimer);
+  clearInterval(tickTimer);
+  knockTimer = null;
+  tickTimer = null;
+}
+
+function updateCountdownDisplay() {
+  infoCountdown.textContent = `${countdown}s`;
+  const pct = ((KNOCK_INTERVAL - countdown) / KNOCK_INTERVAL) * 100;
+  progressFill.style.width = `${100 - pct}%`;
+}
+
+// ================================================================ //
+//  Connection lifecycle
+// ================================================================ //
+
+async function connect(username, secret, remember) {
+  credentials = { username, secret };
+
+  // Save or clear localStorage
+  if (remember) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ username, secret }));
+  }
+
+  // Switch views
+  loginView.hidden = true;
+  dashView.hidden = false;
+  infoUser.textContent = username;
+  infoIP.textContent = "detecting...";
+  setStatus("warn", "Connecting...");
+  clearLog();
+  addLog("Connecting...", "warn");
+
+  // First knock
+  await doKnock();
+
+  // If still connected after first knock, start periodic knocking
+  if (credentials) {
+    startTimers();
+  }
+}
+
+function disconnect(reason) {
+  credentials = null;
+  currentIP = null;
+  stopTimers();
+
+  // Switch views
+  dashView.hidden = true;
+  loginView.hidden = false;
+
+  if (reason) {
+    loginError.textContent = reason;
+    loginError.style.display = "block";
+  }
+
+  updateTitle("disconnected");
+}
+
+function forgetCredentials() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+// ================================================================ //
+//  UI helpers
+// ================================================================ //
+
+function setStatus(level, text) {
+  // level: ok, warn, err, off
+  statusBar.className = `status-bar ${level}`;
+  statusText.textContent = text;
+  updateTitle(level);
+}
+
+function updateTitle(level) {
+  const prefix = { ok: "[OK]", warn: "[...]", err: "[!]", disconnected: "" };
+  const p = prefix[level] || "";
+  document.title = p ? `${p} UFW OkBoy` : "UFW OkBoy";
+}
+
+function addLog(message, type) {
+  const time = new Date().toLocaleTimeString("en-GB", { hour12: false });
+  const entry = document.createElement("div");
+  entry.className = `log-entry ${type || ""}`;
+  entry.textContent = `${time}  ${message}`;
+  logEl.prepend(entry);
+  // Trim old entries
+  while (logEl.children.length > MAX_LOG) {
+    logEl.lastChild.remove();
+  }
+}
+
+function clearLog() {
+  logEl.innerHTML = "";
+}
+
+// ================================================================ //
+//  Page Visibility API: knock immediately when tab becomes visible
+// ================================================================ //
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !credentials) return;
+  const elapsed = (Date.now() - lastKnockTs) / 1000;
+  if (elapsed >= KNOCK_INTERVAL) {
+    addLog("Tab resumed, knocking now", "warn");
+    doKnock();
+    // Reset the periodic timer to avoid double-knock
+    stopTimers();
+    startTimers();
+  }
+});
+
+// ================================================================ //
+//  Event handlers
+// ================================================================ //
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  loginError.style.display = "none";
+  const user = fUser.value.trim();
+  const secret = fSecret.value;
+  if (!user || !secret) return;
+  btnConnect.disabled = true;
+  btnConnect.textContent = "Connecting...";
+  await connect(user, secret, fRemember.checked);
+  btnConnect.disabled = false;
+  btnConnect.textContent = "Connect";
+});
+
+btnKnock.addEventListener("click", () => {
+  addLog("Manual knock", "warn");
+  stopTimers();
+  doKnock().then(() => { if (credentials) startTimers(); });
+});
+
+btnDisconnect.addEventListener("click", () => {
+  forgetCredentials();
+  disconnect();
+});
+
+// ================================================================ //
+//  Auto-connect from saved credentials
+// ================================================================ //
+
+(function autoConnect() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const { username, secret } = JSON.parse(saved);
+    if (username && secret) {
+      // Pre-fill and auto-connect
+      fUser.value = username;
+      fSecret.value = secret;
+      connect(username, secret, true);
+    }
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+})();
+
+})();
+</script>
+
+</body>
+</html>
